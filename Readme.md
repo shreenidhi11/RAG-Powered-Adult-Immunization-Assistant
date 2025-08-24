@@ -1,4 +1,4 @@
-This is an Adult Immunization Schedule! (powered by FastAPI + RAG + Redis) where the dataset is downloaded from the WHO website  file.
+This is an Adult Immunization Schedule! (powered by FastAPI + RAG + Redis Vector Search) where the dataset is downloaded from the WHO website  file.
 
 The vector database used here is Chroma, LLM used is Gemini Flash 2.5 and embeddings from Hugging face
 
