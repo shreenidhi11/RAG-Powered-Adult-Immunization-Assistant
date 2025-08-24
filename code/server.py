@@ -1,13 +1,19 @@
 from contextlib import asynccontextmanager
+from tokenize import endpats
 
 import numpy as np
 import redis
 #Implementing Semantic Cache with Redis Vector Search - Feature-1
 from redis.commands.search.field import VectorField, TextField
 from redis.commands.search.index_definition import IndexDefinition, IndexType
-
+from redis.exceptions import ResponseError
 import hashlib
 import json
+# Feature 2 - Monitoring & logging → Track user queries, cache hits/misses, and latency.
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Counter, Gauge, Histogram, make_asgi_app
+import time
+import logging
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -30,13 +36,15 @@ DATA_PATH = "/Users/shreenidhi/PycharmProjects/RAG-Powered Technical Documentati
 DB_PATH = "chroma_db"
 redis_client = redis.StrictRedis(host="localhost", port=6379, db=0, decode_responses=True)
 embeddings = None
-
+metrics_app = None
+Request_counter = None
+cache_hit_counter, cache_miss_counter, llm_call_counter = None, None, None
 #create the data class for the question
 class Question(BaseModel):
     question: str
 
 def initialize_rag_pipeline_variables():
-    global qa_chain, embeddings
+    global qa_chain, embeddings, Request_counter, cache_hit_counter, cache_miss_counter, llm_call_counter
     #connect to redis client
 
     # 1. Load data & split
@@ -71,6 +79,32 @@ def initialize_rag_pipeline_variables():
         llm=llm,
         chain_type="stuff",
         retriever=retriever
+    )
+
+    # Feature 2 - Configure logging
+    logging.basicConfig(
+        filename="rag_app.log",
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s"
+    )
+
+    # defining the prometheus configuration
+    Request_counter = Counter(
+        "app_request_total",  # name of the metric
+        "total number of request to the application",  # metric description
+        ["endpoint"],  # labels(e.g. endpoint name)
+    )
+
+    cache_hit_counter = Counter(
+        "app_cache_hit_total", "total number of request to the application", ["endpoint"],
+    )
+
+    cache_miss_counter = Counter(
+        "app_cache_miss_total", "total number of request to the application", ["endpoint"],
+    )
+
+    llm_call_counter = Counter(
+        "app_llm_call_total", "total number of request to the application", ["endpoint"],
     )
 
 def load_data_file(file_path):
@@ -118,10 +152,19 @@ def store_answer_for_query(query, answer):
 
 def define_redis_index():
     index_name = "query_index"
+    try:
+        redis_client.ft(index_name).info()  # will fail if index doesn't exist
+    except ResponseError:
+        # Index doesn't exist → create it
+        redis_client.ft(index_name).create_index([
+            TextField("query"),
+            TextField("answer"),
+            VectorField("embedding", "FLAT", {"TYPE": "FLOAT32", "DIM": 384, "DISTANCE_METRIC": "COSINE"})
+        ], definition=IndexDefinition(prefix=["q:"], index_type=IndexType.HASH))
     #schema creation
-    redis_schema = (TextField("query"), TextField("answer"),VectorField("embedding", "HNSW", {"TYPE": "FLOAT32", "DIM": 384, "DISTANCE_METRIC": "COSINE"}))
-    #insert this schema in redis
-    redis_client.ft(index_name).create_index(redis_schema, definition=IndexDefinition(prefix=["q:"], index_type=IndexType.HASH))
+    # redis_schema = (TextField("query"), TextField("answer"),VectorField("embedding", "HNSW", {"TYPE": "FLOAT32", "DIM": 384, "DISTANCE_METRIC": "COSINE"}))
+    # #insert this schema in redis
+    # redis_client.ft(index_name).create_index(redis_schema, definition=IndexDefinition(prefix=["q:"], index_type=IndexType.HASH))
 
 def store_in_redis(user_query, model_answer):
     global embeddings
@@ -154,7 +197,6 @@ def retrieve_from_redis(user_query, top=1, threshold=0.85):
         "PARAMS", 2, "vec_param", query_vec_bytes,
         "DIALECT", 2
     )
-
     # 3. Parse results
     # results looks like: [num_results, doc_id1, [field, value, ...], doc_id2, [field, value, ...], ...]
     if len(results) > 1:
@@ -164,7 +206,7 @@ def retrieve_from_redis(user_query, top=1, threshold=0.85):
             doc_id = results[i]
             fields = dict(zip(results[i + 1][::2], results[i + 1][1::2]))
             score = float(fields.get("score", 1.0))
-            if score <= threshold:  # Lower score = closer match
+            if score >= threshold:  # Lower score = closer match
                 docs.append((doc_id, fields))
         if docs:
             return docs[0][1].get("answer")  # return top answer
@@ -178,21 +220,34 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+#code changes for adding the prometheus
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
+
 
 @app.get("/")
 def read_root():
+    Request_counter.labels(endpoint="/").inc()
     return {"message":"Welcome to the Recommended Adult Immunization Schedule!"}
 
 #Implementing Semantic Cache with Redis Vector Search - Feature-1
 @app.post("/user_query")
 def get_user_query(question: Question):
-    global qa_chain, redis_client
+    global qa_chain, redis_client, cache_hit_counter
+    #Feature 2 - Configure logging
+    start_time = time.time()
     user_query = question.question
     cached_answer = retrieve_from_redis(user_query)
+
     if cached_answer:
+        cache_hit_counter.labels(endpoint="/user_query").inc()
+        latency = time.time() - start_time
+        logging.info(f"Query='{user_query}' | Cache=HIT | Latency={latency:.3f}s")
         return {"User Query": cached_answer}
+
     response = qa_chain.invoke({"query": user_query})
-    print(response)
+    llm_call_counter.labels(endpoint="/user_query").inc()
+    latency = time.time() - start_time
+    logging.info(f"Query='{user_query}' | Cache=MISS | Latency={latency:.3f}s")
     store_in_redis(user_query, response["result"])
     return {"User Query": response["result"]}
-

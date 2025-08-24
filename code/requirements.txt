@@ -99,6 +99,8 @@ pdfminer.six==20221105
 pi_heif==1.1.0
 pillow==11.3.0
 posthog==5.4.0
+prometheus-fastapi-instrumentator==7.1.0
+prometheus_client==0.22.1
 propcache==0.3.2
 proto-plus==1.26.1
 protobuf==6.32.0
