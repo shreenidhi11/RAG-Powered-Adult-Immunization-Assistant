@@ -5,7 +5,10 @@ The vector database used here is Chroma, LLM used is Gemini Flash 2.5 and embedd
 Note: For accessing the LLM use your own LLM key for Gemini Flash 2.5
 
 Steps to run this project on your machine
-
+    
+    Run redis docker container : docker run -d --name redis-stack -p 6379:6379 redis/redis-stack:latest
+    Run prometheus docker container: docker run -d --name=prometheus -p 9090:9090 -v "<main_code_location>/prometheus.yml:/etc/prometheus/prometheus.yml" prom/prometheus
+    Run grafana docker container : docker run -d --name=grafana -p 3000:3000 grafana/grafana
     Run the requirements.txt file : pip -r requirements.txt
     Run the main.py file : uvicorn server:app --reload
     Run the streamlit UI: streamlit run app.py
