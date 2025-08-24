@@ -1,0 +1,30 @@
+1. Features
+	•	Multi-document support → Allow uploading multiple PDFs (health guides, research papers, etc.), and dynamically update the vector DB.
+	•	Conversation history → Maintain context so the assistant can answer follow-ups naturally (e.g., “What about HPV vaccines?”).
+	•	Source highlighting → Show which chunk(s) of the document were used to answer (traceability).
+	•	Summarization → Add a feature to summarize entire sections (e.g., “Summarize adult vaccine recommendations”).
+	•	Question rephrasing → Use the LLM to normalize questions before retrieval (helps reduce embedding mismatches).
+
+⸻
+
+🔹 2. Tech Enhancements
+	•	Hybrid Search → Combine semantic search + keyword search to improve accuracy.
+	•	Advanced caching → Extend Redis cache with fuzzy matching (not just exact queries).(currently wokring on this) - done
+	•	Monitoring & logging → Track user queries, cache hits/misses, and latency. - done
+	•	Evaluation metrics → Add small evaluation scripts (precision/recall of retrieved chunks).
+
+⸻
+
+🔹 3. UI / Deployment
+	•	Streamlit chat interface (like ChatGPT style) instead of just Q&A.
+	•	Role-based access (e.g., only authorized users can upload new docs).
+	•	Dockerize → Package FastAPI + Streamlit + Redis into Docker for easy deployment.
+	•	Cloud deployment → Host on AWS/GCP/Azure and share a live demo link.
+
+⸻
+
+👉 If you specifically want to make it healthcare-focused (like your “Immunization Q&A Assistant” idea), you could add:
+	•	Medical disclaimer at the start (important for LinkedIn showcase).
+	•	Multi-document loading from CDC, WHO, or PubMed PDFs.
+	•	A feature to recommend follow-up questions (“Do you want to see side effects?” → like a guided assistant).
+
