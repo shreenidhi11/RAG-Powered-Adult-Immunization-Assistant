@@ -1,0 +1,9 @@
+#my glabal config
+global:
+  scrape_interval: 5s #set the scrap interval to every 5 second
+
+scrape_configs:
+  - job_name: "my custom rag metric collection"
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
