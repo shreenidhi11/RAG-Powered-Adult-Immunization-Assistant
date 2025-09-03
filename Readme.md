@@ -26,3 +26,6 @@ Features:
 
     •	Rapid answer retrieval due to usage of Redis Vector Search.
     •	Monitoring & logging to track user queries, cache hits/misses, and latency
+    •	Collect user feedback about LLM responses
+
+    
