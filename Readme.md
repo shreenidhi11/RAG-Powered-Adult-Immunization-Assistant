@@ -22,3 +22,7 @@ Technologies Used:
     •	Streamlit - For User Interface
     •	Redis - For caching similar or same user queries
 
+Features:
+
+    •	Rapid answer retrieval due to usage of Redis Vector Search.
+    •	Monitoring & logging to track user queries, cache hits/misses, and latency

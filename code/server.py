@@ -14,6 +14,8 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter, Gauge, Histogram, make_asgi_app
 import time
 import logging
+#Feature 3 - Adding follow up questions to the answer given by the RAG ---to be done
+from langchain.prompts import PromptTemplate
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -42,6 +44,12 @@ cache_hit_counter, cache_miss_counter, llm_call_counter = None, None, None
 #create the data class for the question
 class Question(BaseModel):
     question: str
+
+class Feedback(BaseModel):
+    query: str
+    answer: str
+    feedback_type: int | None
+
 
 def initialize_rag_pipeline_variables():
     global qa_chain, embeddings, Request_counter, cache_hit_counter, cache_miss_counter, llm_call_counter
@@ -251,3 +259,11 @@ def get_user_query(question: Question):
     logging.info(f"Query='{user_query}' | Cache=MISS | Latency={latency:.3f}s")
     store_in_redis(user_query, response["result"])
     return {"User Query": response["result"]}
+
+
+#Feature 3 - Feeback URL
+@app.post("/submit_feedback")
+def submit_feedback(feedback: Feedback):
+    logging.info(f"Feedback Question='{feedback.query}'")
+    logging.info(f"Feedback Answer='{feedback.answer}'")
+    logging.info(f"Feedback Type='{feedback.feedback_type}'")
