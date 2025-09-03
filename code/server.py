@@ -43,6 +43,8 @@ embeddings = None
 metrics_app = None
 Request_counter = None
 cache_hit_counter, cache_miss_counter, llm_call_counter = None, None, None
+#feature 5
+positive_user_feedback, negative_user_feedback = None, None
 # Define the path to your feedback CSV file
 FEEDBACK_CSV_FILE = "feedback.csv"
 #create the data class for the question
@@ -56,7 +58,7 @@ class Feedback(BaseModel):
 
 
 def initialize_rag_pipeline_variables():
-    global qa_chain, embeddings, Request_counter, cache_hit_counter, cache_miss_counter, llm_call_counter
+    global qa_chain, embeddings, Request_counter, cache_hit_counter, cache_miss_counter, llm_call_counter, positive_user_feedback, negative_user_feedback
     #connect to redis client
 
     # 1. Load data & split
@@ -117,6 +119,13 @@ def initialize_rag_pipeline_variables():
 
     llm_call_counter = Counter(
         "app_llm_call_total", "total number of request to the application", ["endpoint"],
+    )
+#     feature5
+    positive_user_feedback = Counter(
+        "app_positive_user_feedback", "total number of request to the application", ["endpoint"],
+    )
+    negative_user_feedback = Counter(
+        "app_negative_user_feedback", "total number of request to the application", ["endpoint"],
     )
 
 def load_data_file(file_path):
@@ -298,3 +307,9 @@ def submit_feedback(feedback: Feedback):
     #adding the feedback to csv file
     feedback_dict = feedback.model_dump()
     save_feedback_to_csv(feedback_dict)
+    #update the metric for positive and negative feedbacks for the assistant query
+    if feedback.feedback_type == 1:
+        positive_user_feedback.labels(endpoint="/submit_feedback").inc()
+    elif feedback.feedback_type == 0:
+        negative_user_feedback.labels(endpoint="/submit_feedback").inc()
+
