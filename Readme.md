@@ -4,6 +4,9 @@ The vector database used here is Chroma, LLM used is Gemini Flash 2.5 and embedd
 
 Note: For accessing the LLM use your own LLM key for Gemini Flash 2.5
 
+Architecture Diagram
+<img width="1508" height="367" alt="Image" src="https://github.com/user-attachments/assets/ab0db24f-6401-40ad-bd1a-c57b69647b04" />
+
 Steps to run this project on your machine
     
     Run redis docker container : docker run -d --name redis-stack -p 6379:6379 redis/redis-stack:latest
